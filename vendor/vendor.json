@@ -1,0 +1,49 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "Ay3frtNts6DRqjGM0+9mS9pU7JY=",
+			"path": "github.com/cbednarski/mkdeb/deb",
+			"revision": "02a299c76ca793510b23113f5e39b8f7d8e9d614",
+			"revisionTime": "2017-05-18T23:54:13Z"
+		},
+		{
+			"checksumSHA1": "FmvLZBLZJPw74S8G/nldAMgFess=",
+			"path": "github.com/facebookgo/flagenv",
+			"revision": "fcd59fca7456889be7f2ad4515b7612fd6acef31",
+			"revisionTime": "2016-04-25T20:52:00Z"
+		},
+		{
+			"checksumSHA1": "+IQN6csaE5uxhZJnulb6uwhVCr4=",
+			"path": "github.com/klauspost/compress/flate",
+			"revision": "f3dce52e0576655d55fd69e74b63da96ad1108f3",
+			"revisionTime": "2017-05-28T13:23:59Z"
+		},
+		{
+			"checksumSHA1": "R6zKqn31GjJH1G8W/api7fAW0RU=",
+			"path": "github.com/klauspost/cpuid",
+			"revision": "09cded8978dc9e80714c4d85b0322337b0a1e5e0",
+			"revisionTime": "2016-03-02T07:53:16Z"
+		},
+		{
+			"checksumSHA1": "BM6ZlNJmtKy3GBoWwg2X55gnZ4A=",
+			"path": "github.com/klauspost/crc32",
+			"revision": "1bab8b35b6bb565f92cbc97939610af9369f942a",
+			"revisionTime": "2017-02-10T14:05:23Z"
+		},
+		{
+			"checksumSHA1": "HHwDvVvMRRrhfz+3dplYQpUX4YY=",
+			"path": "github.com/klauspost/pgzip",
+			"revision": "0bf5dcad4ada2814c3c00f996a982270bb81a506",
+			"revisionTime": "2017-04-02T12:42:21Z"
+		},
+		{
+			"checksumSHA1": "2oKRfeTuuJiWGXn135EWdvEQ35w=",
+			"path": "github.com/laher/argo/ar",
+			"revision": "11d91c83cc0fd1ac9079a10b44e185db575f7f43",
+			"revisionTime": "2014-07-22T10:39:44Z"
+		}
+	],
+	"rootPath": "github.com/thomasf/drone-mkdeb"
+}
