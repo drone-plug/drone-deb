@@ -1,0 +1,30 @@
+workspace:
+  base: /go
+  path: src/github.com/drone-plugins/drone-deb
+
+pipeline:
+
+  build:
+    group: build
+    image: golang:1.8
+    environment:
+      - CGO_ENABLED=0
+    commands:
+      - go build -ldflags "-s -w -X main.build=$DRONE_BUILD_NUMBER" -a -tags netgo
+
+  test:
+    group: build
+    image: golang:1.8
+    environment:
+      - CGO_ENABLED=0
+    commands:
+      - go vet
+      - go test
+
+  latest:
+    image: docker
+    repo: plugins/deb
+    tags: [ "latest", "1.0", "1" ]
+    when:
+      branch: master
+      event: push
