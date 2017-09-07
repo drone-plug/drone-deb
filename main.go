@@ -1,103 +1,204 @@
 package main
 
 import (
-	"encoding/json"
+	"bytes"
 	"flag"
 	"fmt"
+	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
-	"github.com/cbednarski/mkdeb/deb"
-	"github.com/facebookgo/flagenv"
+	"github.com/thomasf/drone-plugins-go/plugins"
+	"github.com/thomasf/vfs"
+	"github.com/xor-gate/debpkg"
 )
 
 var build = "0" // build number set at compile-time
 
 func main() {
-	ps := deb.DefaultPackageSpec()
-	var target string
+	// log.SetFlags(log.LstdFlags | log.Lshortfile)
+	c := &struct {
+		// required
+		Name         string
+		Version      string
+		Architecture string
+		Maintainer   string
+		Description  string
+		Depends      plugins.StringSliceFlag
+		Conflicts    plugins.StringSliceFlag
+		Replaces     plugins.StringSliceFlag
+		Section      string // Defaults to "default"
+		Priority     string // Defaults to "extra"
+		Homepage     string
+		Auto         string // Defaults to "contrib/debian"
+		Preinst      string
+		Postinst     string
+		Prerm        string
+		Postrm       string
+		Files        plugins.StringMapFlag
+		Conffiles    plugins.StringSliceFlag
 
-	flag.StringVar(&target, "target", ".", "target path")
+		// output
+
+		Target string
+	}{
+		Files:     make(map[string]string),
+		Conffiles: []string{"/etc/**"},
+	}
 
 	// Binary Debian Control File - Required fields
-	flag.StringVar(&ps.Package, "package", "", "package package")
-	flag.StringVar(&ps.Version, "version", "", "package version")
-	flag.StringVar(&ps.Architecture, "architecture", "", "package architecture")
-	flag.StringVar(&ps.Maintainer, "maintainer", "", "package maintainer")
-	flag.StringVar(&ps.Description, "description", "", "package description")
+	flag.StringVar(&c.Name, "name", "", "package package")
+	flag.StringVar(&c.Version, "version", "", "package version")
+	flag.StringVar(&c.Architecture, "arch", "", "package architecture")
+	flag.StringVar(&c.Maintainer, "maintainer", "", "package maintainer")
+	flag.StringVar(&c.Description, "description", "", "package description")
 
 	// Optional Fields
-	flag.Var((*StringSliceFlag)(&ps.Depends), "depends", "package depends")
-	flag.Var((*StringSliceFlag)(&ps.Conflicts), "conflicts", "package conflicts")
-	flag.Var((*StringSliceFlag)(&ps.Breaks), "breaks", "package breaks")
-	flag.Var((*StringSliceFlag)(&ps.Replaces), "replaces", "package replaces")
-	flag.StringVar(&ps.Section, "section", "default", "package section")
-	flag.StringVar(&ps.Priority, "priority", "extra", "package priority")
-	flag.StringVar(&ps.Homepage, "homepage", "", "package homepage")
+	flag.Var(&c.Depends, "depends", "package depends")
+	flag.Var(&c.Conflicts, "conflicts", "package conflicts")
+	flag.Var(&c.Replaces, "replaces", "package replaces")
+	flag.StringVar(&c.Section, "section", "default", "package section")
+	flag.StringVar(&c.Priority, "priority", "extra", "package priority")
+	flag.StringVar(&c.Homepage, "homepage", "", "package homepage")
 
-	// Control Scripts
-	flag.StringVar(&ps.Preinst, "preinst", "", "package preinst script")
-	flag.StringVar(&ps.Postinst, "postinst", "", "package postinst script")
-	flag.StringVar(&ps.Prerm, "prerm", "", "package prerm script")
-	flag.StringVar(&ps.Postrm, "postrm", "", "package postrm script")
+	// Files
+	flag.StringVar(&c.Auto, "auto", "contrib/debian", "auth path")
+	flag.Var(&c.Files, "files", "package files")
+	flag.StringVar(&c.Preinst, "preinst", "", "package preinst script")
+	flag.StringVar(&c.Postinst, "postinst", "", "package postinst script")
+	flag.StringVar(&c.Prerm, "prerm", "", "package prerm script")
+	flag.StringVar(&c.Postrm, "postrm", "", "package postrm script")
 
-	// Build time options
-	flag.StringVar(&ps.AutoPath, "auto_path", "deb-pkg", "auth path")
-	flag.Var((*JsonStringMapFlag)(&ps.Files), "files", "package files")
-	flag.StringVar(&ps.TempPath, "temp_path", "", "temp path")
-	flag.BoolVar(&ps.UpgradeConfigs, "upgrade-configs", false, "upgrade configs")
-	flag.BoolVar(&ps.PreserveSymlinks, "preserve-symlinks", false, "preserve symlinks")
+	flag.StringVar(&c.Target, "target", "", "target directory")
 
-	flagenv.Prefix = "plugin_"
-	flagenv.Parse()
-	flag.Parse()
+	plugins.Parse()
 
-	if ps.Architecture == "386" {
-		ps.Architecture = "i386"
+	if c.Architecture == "386" {
+		c.Architecture = "i386"
 	}
 
-	err := ps.Build(target)
-	if err != nil {
-		fmt.Println(err)
-		data, err := json.MarshalIndent(&ps, "", " ")
-		if err != nil {
-			panic(err)
+	d := debpkg.New()
+	defer d.Close()
+
+	d.SetName(c.Name)
+	d.SetVersion(c.Version)
+	d.SetArchitecture(c.Architecture)
+	d.SetMaintainer(c.Maintainer)
+	d.SetDescription(c.Description)
+
+	d.SetDepends(strings.Join(c.Depends, ", "))
+	d.SetConflicts(strings.Join(c.Conflicts, ", "))
+	d.SetReplaces(strings.Join(c.Replaces, ", "))
+	d.SetSection(c.Section)
+	d.SetHomepage(c.Homepage)
+
+	controlFs := vfs.NewNameSpace()
+	dataFs := vfs.NewNameSpace()
+
+	if c.Auto != "" {
+		controlFileMap := make(map[string]string)
+		dataFs.Bind(
+			"/", vfs.Exclude(vfs.OS(c.Auto), "/preinst", "/postinst", "/prerm", "/postrm"),
+			"/", vfs.BindAfter)
+
+		for _, cf := range []string{"preinst", "postinst", "prerm", "postrm"} {
+			cfp := filepath.Join(c.Auto, cf)
+			if _, err := os.Stat(cfp); err == nil {
+				controlFileMap[cf] = cfp
+			}
 		}
-		fmt.Println(string(data))
-		os.Exit(1)
 	}
-}
 
-type StringSliceFlag []string
+	if c.Files != nil && len(c.Files) > 0 {
+		fmap := make(map[string]string)
+	fls:
+		for dst, src := range c.Files {
+			fi, err := os.Stat(src)
+			if err != nil {
+				log.Fatalf("error loading Files: %v", err)
+			}
+			if fi.IsDir() {
+				dataFs.Bind(dst, vfs.OS(src), "/", vfs.BindAfter)
+				continue fls
+			}
 
-func (s *StringSliceFlag) String() string {
-	return strings.Join(*s, ",")
-}
-
-func (s *StringSliceFlag) Set(value string) error {
-	*s = append(*s, strings.Split(value, ",")...)
-	return nil
-}
-
-type JsonStringMapFlag map[string]string
-
-func (s *JsonStringMapFlag) String() string {
-	data, err := json.Marshal(s)
-	if err != nil {
-		panic(err)
+			fmap[strings.TrimLeft(dst, "/")] = src
+		}
+		dataFs.Bind("/", vfs.FileMap(fmap), "/", vfs.BindAfter)
 	}
-	return string(data)
-}
 
-func (s *JsonStringMapFlag) Set(value string) error {
-	var m map[string]string
-	err := json.Unmarshal([]byte(value), &m)
-	if err != nil {
-		return err
+	controlFileMap := make(map[string]string)
+maint:
+	for dst, src := range map[string]string{
+		"preinst":  c.Preinst,
+		"postinst": c.Postinst,
+		"prerm":    c.Prerm,
+		"postrm":   c.Postrm,
+	} {
+		src = strings.TrimSpace(src)
+		if src == "" {
+			continue maint
+		}
+		fi, err := os.Stat(src)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if fi.IsDir() {
+			log.Fatalf("maint script %s must be a file, not a directory:", src)
+		}
+		controlFileMap[dst] = src
 	}
-	ss := *s
-	for k, v := range m {
-		ss[k] = v
+
+	{
+		var conffilesBuf bytes.Buffer
+		err := vfs.Walk("/", dataFs, func(p string, info os.FileInfo, err error) error {
+			// log.Println("p", p, info)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if info.IsDir() {
+				err := d.AddEmptyDirectory(p)
+				if err != nil {
+					log.Fatal(err)
+				}
+				return nil
+			}
+			if opr, ok := info.(vfs.OSPather); ok {
+				op := opr.OSPath()
+				err := d.AddFile(op, p)
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else {
+				log.Fatalln("expected all files to be of OSPather type!", p)
+			}
+
+			for _, pattern := range c.Conffiles {
+				ok, err := filepath.Match(pattern, p)
+				if err != nil {
+					log.Fatal(err)
+				}
+				if ok {
+					fmt.Fprintln(&conffilesBuf, p)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		if conffilesBuf.Len() > 0 {
+			conffilesBuf.WriteString("\n")
+			controlFileMap["conffiles"] = conffilesBuf.String()
+		}
+		if len(controlFileMap) > 0 {
+			controlFs.Bind("/", vfs.Map(controlFileMap), "/", vfs.BindBefore)
+		}
 	}
-	return nil
+	log.Println(d.GetFilename())
+	if err := d.Write(filepath.Join(c.Target, d.GetFilename())); err != nil {
+		log.Fatal(err)
+	}
+	d.Close()
 }

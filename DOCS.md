@@ -6,9 +6,9 @@ The following parameters are used to configure the plugin:
 
 ### Required fields
 
-* **package** - The name of your package
+* **name** - The name of your package
 * **version** - Must adhere to debian version syntax
-* **architecture** - CPU arch for your binaries, or "all"
+* **arch** - CPU arch for your binaries, or "all"
 
 Supported values are: all, amd64, arm64, armel, armhf, i386, mips, mipsel,
 powerpc, ppc64el, s390xa. Additionally, the value 386 will automatically be
@@ -21,10 +21,9 @@ translated to i386 (for Go/GOARCH).
 
 * **depends** - Other packages you depend on. E.g: "python" or "curl (>= 7.0.0)"
 * **conflicts** - Packages your package are not compatible with
-* **breaks** - Packages your package breaks
 * **replaces** - Packages your package replaces
 * **section** - section (default "default")
-* **priority** - priority (default "extra")
+* **priority** - priority (default "optional")
 * **homepage** - URL to your project homepage or source repository, if you have one
 
 For more details on how to specify various config options, refer to the
@@ -35,7 +34,7 @@ debian package specification:
 
 ### File and path fields
 
-* **auto_path** - auto path (default "deb-pkg")
+* **auto** - auto path (default "contrib/debian")
 
 drone-deb will automatically include all files under **auto_path**. For
 example, the following files will be automatically included and installed to
@@ -68,10 +67,6 @@ You can override this behavior by setting the following plugin options:
 
 ### Build options fields
 
-* **preserve_symlinks** - By default contents of symlink targets are copied. This
-    option writes symlinks to the archive instead
-* **upgrade_configs** - Indicates whether apt should replace files under /etc when
-    installing a new package version. By default these files are not upgraded
 * **target** - target directory to create .deb file in
 
 ## Examples
@@ -89,7 +84,7 @@ pipeline:
     version: 0.0.1
     maintainer: Thomas Frössman<thomasf@jossystem.se>
     homepage: https://example.com
-    architecture: all
+    arch: all
     auto_path: contrib/debian/deb-pkg/
 
   no_auto:
@@ -98,7 +93,7 @@ pipeline:
     package: no-auto-example
     version: 0.0.2
     maintainer: Thomas Frössman<thomasf@jossystem.se>
-    architecture: all
+    arch: all
     postrm: contrib/debian/deb-pkg/postrm
     files:
       contrib/debian/deb-pkg/etc/testdata.ini: etc/testdata.ini
@@ -109,7 +104,7 @@ pipeline:
     package: files-example
     version: 1.0.0
     maintainer: Thomas Frössman<thomasf@jossystem.se>
-    architecture: all
+    arch: all
     auto_path: contrib/debian/deb-pkg/
     postinst: contrib/debian/postinst
     files:
@@ -122,13 +117,11 @@ pipeline:
     package: deps-example
     version: 1.0.0
     maintainer: Thomas Frössman<thomasf@jossystem.se>
-    architecture: all
+    arch: all
     auto_path: contrib/debian/deb-pkg/
     depends:
       - python (>= 3.5)
       - go (>= 1.8)
-    breaks:
-      - simple-example
     replaces:
       - files-example
 ```
