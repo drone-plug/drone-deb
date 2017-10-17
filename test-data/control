@@ -1,0 +1,35 @@
+Package: python
+Priority: optional
+Section: python
+Installed-Size: 648
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Original-Maintainer: Matthias Klose <doko@debian.org>
+Architecture: amd64
+Source: python-defaults
+Version: 2.7.13-2
+Replaces: python-dev (<< 2.6.5-2)
+Provides: python-ctypes, python-email, python-importlib, python-profiler, python-wsgiref
+Depends: python2.7 (>= 2.7.13-1~), libpython-stdlib (= 2.7.13-2)
+Pre-Depends: python-minimal (= 2.7.13-2)
+Suggests: python-doc (= 2.7.13-2), python-tk (>= 2.7.13-1~)
+Conflicts: python-central (<< 0.5.5)
+Breaks: update-manager-core (<< 0.200.5-2)
+Filename: pool/main/p/python-defaults/python_2.7.13-2_amd64.deb
+Size: 139426
+MD5sum: 1e8038199a0793846701517f11a1190e
+SHA1: 83b052953f97629c21e8dfd2477f9610cd52b5bc
+SHA256: 3ead38f9914f4246548251eadf50e62b8c697ba983dceb7948012dbb9cab61b1
+Description-en: interactive high-level object-oriented language (default version)
+ Python, the high-level, interactive object oriented language,
+ includes an extensive class library with lots of goodies for
+ network programming, system administration, sounds and graphics.
+ .
+ This package is a dependency package, which depends on Debian's default
+ Python version (currently v2.7).
+Description-md5: d1ea97f755d8153fe116080f2352859b
+Multi-Arch: allowed
+Homepage: http://www.python.org/
+Bugs: https://bugs.launchpad.net/ubuntu/+filebug
+Origin: Ubuntu
+Supported: 9m
+Task: ubuntu-desktop, ubuntu-usb, samba-server, kubuntu-desktop, kubuntu-full, edubuntu-desktop, edubuntu-usb, xubuntu-desktop, mythbuntu-frontend, mythbuntu-frontend, mythbuntu-desktop, mythbuntu-backend-slave, mythbuntu-backend-slave, mythbuntu-backend-master, mythbuntu-backend-master, lubuntu-desktop-share, lubuntu-gtk-desktop, lubuntu-desktop, lubuntu-qt-desktop, ubuntustudio-desktop-core, ubuntustudio-desktop, ubuntustudio-fonts, ubuntu-gnome-desktop, ubuntukylin-desktop, ubuntu-mate-core, ubuntu-mate-desktop, ubuntu-budgie-desktop

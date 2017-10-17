@@ -1,0 +1,4 @@
+targetdir/
+/drone-deb
+/drone-deb-test
+/example/*.deb
