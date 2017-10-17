@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"os"
 
 	"github.com/drone-plug/drone-deb/deb"
@@ -17,7 +16,6 @@ const build = "0" // build number set at compile-time
 
 func main() {
 
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	c := &struct {
 		// required
 		// Name         string
@@ -211,12 +209,6 @@ func main() {
 // 	d.Close()
 // }
 
-func fsOrDie(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 // Files .
 type Files struct {
 	Auto     string // Defaults to "contrib/debian"
@@ -251,8 +243,13 @@ func (s *ArchFlag) Set(value string) error {
 type DependencyFlag dependency.Dependency
 
 func (s *DependencyFlag) String() string {
-	// return strings.Join(*s, ",")
-	return "temp"
+	str, err := dependency.Dependency(*s).MarshalControl()
+	if err != nil {
+		plug.Println(err)
+		return ""
+	}
+	return str
+
 }
 
 func (s *DependencyFlag) Set(value string) error {

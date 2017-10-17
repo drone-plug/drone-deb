@@ -62,26 +62,29 @@ func (p *BinaryControl) Validate() error {
 	if p.Package == "" {
 		missing = append(missing, "package")
 		refs = append(refs, &p.Package)
-
 	}
 	var v version.Version
 	if p.Version == v {
 		missing = append(missing, "version")
+		refs = append(refs, &p.Version)
 	}
 	var a dependency.Arch
 	if p.Arch == a {
 		missing = append(missing, "arch")
+		refs = append(refs, &p.Arch)
 	}
 	if p.Maintainer == "" {
 		missing = append(missing, "maintainer")
+		refs = append(refs, &p.Maintainer)
 	}
 	if p.Description == "" {
 		missing = append(missing, "description")
+		refs = append(refs, &p.Description)
 	}
 	if len(missing) > 0 {
 		err := MissingFieldsError{
 			Names: missing,
-			Refs: refs,
+			Refs:  refs,
 		}
 		return err
 	}
