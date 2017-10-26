@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"flag"
+	"log"
 	"os"
 
 	"github.com/drone-plug/drone-deb/deb"
@@ -14,91 +14,113 @@ import (
 
 const build = "0" // build number set at compile-time
 
-func main() {
+// Plugin .
+type Plugin struct {
+	// required
+	// Name         string
 
-	c := &struct {
-		// required
-		// Name         string
+	Auto          string // Defaults to "contrib/debian"
+	ControlFile   string
+	Preinst       string
+	Postinst      string
+	Prerm         string
+	Postrm        string
+	Files         map[string]string
+	Conffiles     []string
+	BinaryControl *deb.BinaryControl
 
-		Auto        string // Defaults to "contrib/debian"
-		ControlFile string
-		Preinst     string
-		Postinst    string
-		Prerm       string
-		Postrm      string
-		Files       map[string]string
-		Conffiles   []string
+	// output
 
-		// output
+	Target string
+}
 
-		Target string
-	}{
-		Files:     make(map[string]string),
-		Conffiles: []string{"/etc/**"},
+func NewPlugin() *Plugin {
+	c := &Plugin{
+		Files:         make(map[string]string),
+		Conffiles:     []string{"/etc/**"},
+		BinaryControl: &deb.BinaryControl{},
 	}
+	return c
+}
 
-	var bp deb.BinaryControl
+func (c *Plugin) SetFlags(fs *plug.FlagSet) {
+	bp := c.BinaryControl
 	// Binary Debian Control File - Required fields
-	flag.StringVar(&bp.Package, "package", "", "package package")
-	flag.Var((*VersionFlag)(&bp.Version), "version", "package version")
-	flag.Var((*ArchFlag)(&bp.Arch), "arch", "package architectures")
+	fs.StringVar(&bp.Package, "package", "", "package package")
+	fs.Var((*VersionFlag)(&bp.Version), "version", "package version")
+	fs.Var((*ArchFlag)(&bp.Arch), "arch", "package architectures")
 
-	flag.StringVar(&bp.Maintainer, "maintainer", "", "package maintainer")
-	flag.StringVar(&bp.Description, "description", "", "package description")
+	fs.StringVar(&bp.Maintainer, "maintainer", "", "package maintainer")
+	fs.StringVar(&bp.Description, "description", "", "package description")
 
 	// Optional Fields
 
-	flag.Var((*DependencyFlag)(&bp.Breaks), "breaks", "package Breaks")
-	flag.Var((*DependencyFlag)(&bp.Conflicts), "conflicts", "package Conflicts")
-	flag.Var((*DependencyFlag)(&bp.Depends), "depends", "package Depends")
-	flag.Var((*DependencyFlag)(&bp.PreDepends), "pre-depends", "package Pre-Depends")
-	flag.Var((*DependencyFlag)(&bp.Recommends), "recommends", "package Recommends")
-	flag.Var((*DependencyFlag)(&bp.Replaces), "replaces", "package Replaces")
-	flag.Var((*DependencyFlag)(&bp.Suggests), "suggests", "package Suggests")
+	fs.Var((*DependencyFlag)(&bp.Breaks), "breaks", "package Breaks")
+	fs.Var((*DependencyFlag)(&bp.Conflicts), "conflicts", "package Conflicts")
+	fs.Var((*DependencyFlag)(&bp.Depends), "depends", "package Depends")
+	fs.Var((*DependencyFlag)(&bp.PreDepends), "pre-depends", "package Pre-Depends")
+	fs.Var((*DependencyFlag)(&bp.Recommends), "recommends", "package Recommends")
+	fs.Var((*DependencyFlag)(&bp.Replaces), "replaces", "package Replaces")
+	fs.Var((*DependencyFlag)(&bp.Suggests), "suggests", "package Suggests")
 
-	flag.StringVar(&bp.Section, "section", "default", "package section")
-	flag.StringVar(&bp.Priority, "priority", "extra", "package priority")
-	flag.StringVar(&bp.Homepage, "homepage", "", "package homepage")
+	fs.StringVar(&bp.Section, "section", "default", "package section")
+	fs.StringVar(&bp.Priority, "priority", "extra", "package priority")
+	fs.StringVar(&bp.Homepage, "homepage", "", "package homepage")
 
 	// Files
-	plug.StringSliceVar(&c.Conffiles, "conf_files", "config files")
-	flag.StringVar(&c.Auto, "auto", "contrib/debian", "auth path")
-	// flag.Var(&c.Files, "files", "package files")
-	flag.StringVar(&c.Preinst, "preinst", "", "package preinst script")
-	flag.StringVar(&c.Postinst, "postinst", "", "package postinst script")
-	flag.StringVar(&c.Prerm, "prerm", "", "package prerm script")
-	flag.StringVar(&c.Postrm, "postrm", "", "package postrm script")
+	fs.StringSliceVar(&c.Conffiles, "conf_files", "config files")
+	fs.StringVar(&c.Auto, "auto", "contrib/debian", "auth path")
+	// fs.Var(&c.Files, "files", "package files")
+	fs.StringVar(&c.Preinst, "preinst", "", "package preinst script")
+	fs.StringVar(&c.Postinst, "postinst", "", "package postinst script")
+	fs.StringVar(&c.Prerm, "prerm", "", "package prerm script")
+	fs.StringVar(&c.Postrm, "postrm", "", "package postrm script")
 
-	flag.StringVar(&c.Target, "target", "", "target directory")
+	fs.StringVar(&c.Target, "target", "", "target directory")
 
-	plug.Run(func(ctx context.Context) error {
-
-		if c.ControlFile != "" {
-			f, err := os.Open(c.ControlFile)
-			if err != nil {
-				plug.Fatal(err)
-			}
-			defer f.Close()
-			var bpc deb.BinaryControlTemplate
-			if err := control.Unmarshal(&bpc, f); err != nil {
-				plug.Fatal(err)
-			}
-			bpc.AddMissing(&bp)
+}
+func (c *Plugin) Exec(ctx context.Context, log *plug.Logger) error {
+	isValid := true
+	bp := c.BinaryControl
+	if c.ControlFile != "" {
+		f, err := os.Open(c.ControlFile)
+		if err != nil {
+			isValid = false
+			log.Usagef(&c.ControlFile, "%v", err)
 		}
-
-		if err := bp.Validate(); err != nil {
-			for _, e := range err.(deb.MissingFieldsError).Refs {
-				plug.Usagef(e, "must be set")
-			}
-			return plug.ErrUsageError
+		defer f.Close()
+		var bpc deb.BinaryControlTemplate
+		if err := control.Unmarshal(&bpc, f); err != nil {
+			log.Usage(&c.ControlFile, err)
+			isValid = false
 		}
+		bpc.AddMissing(bp)
+	}
 
-		if err := control.Marshal(os.Stdout, &bp); err != nil {
-			plug.Fatal(err)
+	if err := bp.Validate(); err != nil {
+		isValid = false
+		for _, e := range err.(deb.MissingFieldsError).Refs {
+			log.Usagef(e, "Value must be set!")
 		}
+	}
 
-		return nil
-	})
+	if !isValid {
+		return plug.ErrUsageError
+	}
+
+	if err := control.Marshal(os.Stdout, &bp); err != nil {
+		log.Fatal(err)
+	}
+
+	return nil
+
+}
+
+func main() {
+
+	c := NewPlugin()
+
+	plug.Run(c)
 }
 
 // func OLD() {
@@ -245,7 +267,7 @@ type DependencyFlag dependency.Dependency
 func (s *DependencyFlag) String() string {
 	str, err := dependency.Dependency(*s).MarshalControl()
 	if err != nil {
-		plug.Println(err)
+		log.Println(err)
 		return ""
 	}
 	return str
