@@ -1,24 +1,24 @@
 package main
 
 import (
-	"flag"
 	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/drone-plug/drone-plugins-go/plug"
 	"github.com/drone-plug/drone-plugins-go/plug/plugtest"
 )
 
 func TestBuildPackage(t *testing.T) {
+	p := NewPlugin()
+	pt := plugtest.New(t, p)
+
 	tempDir, err := ioutil.TempDir("", "dpkbdeb")
 	if err != nil {
 		t.Fatalf("TempDir: %v", err)
 	}
-	env := make(plugtest.Envmap)
-	env.SetDrone()
-	// env.SetDebug()
-	env.SetPluginVars(map[string]string{
+	defer os.RemoveAll(tempDir)
+	// pt.SetDebug()
+	pt.SetPluginVars(map[string]string{
 		"target":      tempDir,
 		"package":     "testpackage",
 		"version":     "0.0.1",
@@ -38,10 +38,8 @@ func TestBuildPackage(t *testing.T) {
 		}),
 	})
 
-	s := plug.NewService(flag.NewFlagSet("-", flag.ContinueOnError), env.EnvFunc)
-	p := NewPlugin()
-	s.Run(p)
-	defer os.RemoveAll(tempDir)
+	pt.AssertSuccess()
+	pt.AssertOutput("ascd")
 
 	// targetFile := fmt.Sprintf("%s/testpackage-0.0.1-amd64.deb", tempDir)
 

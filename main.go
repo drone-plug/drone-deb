@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 
 	"github.com/drone-plug/drone-deb/deb"
@@ -117,9 +116,7 @@ func (c *Plugin) Exec(ctx context.Context, log *plug.Logger) error {
 }
 
 func main() {
-
 	c := NewPlugin()
-
 	plug.Run(c)
 }
 
@@ -267,7 +264,6 @@ type DependencyFlag dependency.Dependency
 func (s *DependencyFlag) String() string {
 	str, err := dependency.Dependency(*s).MarshalControl()
 	if err != nil {
-		log.Println(err)
 		return ""
 	}
 	return str
